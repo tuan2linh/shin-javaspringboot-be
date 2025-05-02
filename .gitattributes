@@ -1,0 +1,15 @@
+# Handle line endings automatically for files detected as text
+* text=auto eol=lf
+
+# Force batch scripts to use CRLF
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
+
+# Force bash scripts to use LF
+*.sh text eol=lf
+mvnw text eol=lf
+
+# Java source files
+*.java text eol=lf
+*.properties text eol=lf
+*.xml text eol=lf
