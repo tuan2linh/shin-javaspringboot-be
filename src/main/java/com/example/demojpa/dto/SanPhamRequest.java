@@ -8,5 +8,7 @@ import java.util.List;
 public class SanPhamRequest {
     private String ten;
     private double gia;
+    private String mota;
+    private String hinhAnh;
     private List<Long> theLoaiIds;
 }

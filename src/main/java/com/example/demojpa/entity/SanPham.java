@@ -17,6 +17,9 @@ public class SanPham {
     private Long id;
     private String ten;
     private double gia;
+    @Column(length = 1000)
+    private String mota;
+    private String hinhAnh;
     @ManyToMany
     @JoinTable(
     name = "san_pham_the_loai",
