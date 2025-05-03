@@ -3,6 +3,7 @@ package com.example.demojpa.dto;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class DonHangResponse {
@@ -10,4 +11,5 @@ public class DonHangResponse {
     private LocalDate ngayDat;
     private double tongTien;
     private String tenKhach;
+    private List<ChiTietDonHangResponse> chiTietDonHang;
 }

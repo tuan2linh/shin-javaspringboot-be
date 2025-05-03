@@ -4,6 +4,7 @@ import com.example.demojpa.dto.TheLoaiResponse;
 import com.example.demojpa.entity.TheLoai;
 import com.example.demojpa.repository.TheLoaiRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,12 +39,14 @@ public class TheLoaiController {
 
     // POST /theloai
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public TheLoai create(@RequestBody TheLoai theLoai) {
         return theLoaiRepo.save(theLoai);
     }
 
     // PUT /theloai/{id}
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public TheLoai update(@PathVariable Long id, @RequestBody TheLoai data) {
         TheLoai old = theLoaiRepo.findById(id).orElseThrow();
         old.setTen(data.getTen());
@@ -52,6 +55,7 @@ public class TheLoaiController {
 
     // DELETE /theloai/{id}
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable Long id) {
         theLoaiRepo.deleteById(id);
     }

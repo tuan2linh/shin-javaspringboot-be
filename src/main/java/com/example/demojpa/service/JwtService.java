@@ -23,7 +23,7 @@ public class JwtService {
     }
 
 
-    private static final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 15; // 15 phút
+    private static final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 60 *24; // 24 giờ - for testing
     private static final long REFRESH_TOKEN_EXPIRATION = 1000 * 60 * 60 * 24 * 7; // 7 ngày
 
     public String generateAccessToken(User user) {

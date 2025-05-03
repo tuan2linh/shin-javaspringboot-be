@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -24,4 +26,7 @@ public class DonHang {
     @JoinColumn(name = "khach_hang_id") // tên cột FK
     @JsonBackReference // tránh vòng lặp vô hạn khi serialize
     private KhachHang khachHang;
+
+    @OneToMany(mappedBy = "donHang", cascade = CascadeType.ALL)
+    private List<ChiTietDonHang> chiTietDonHangList = new ArrayList<>();
 }
