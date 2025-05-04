@@ -6,6 +6,7 @@ import com.example.demojpa.dto.KhachHangResponse;
 import com.example.demojpa.dto.DonHangResponse;
 import com.example.demojpa.entity.KhachHang;
 import com.example.demojpa.entity.User;
+import com.example.demojpa.entity.Role;
 import com.example.demojpa.repository.KhachHangRepository;
 import com.example.demojpa.repository.UserRepository;
 
@@ -13,6 +14,7 @@ import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.method.P;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -68,11 +70,12 @@ public class KhachHangController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     public ResponseEntity<ApiResponse<KhachHangResponse>> getById(@PathVariable Long id) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
 
         return khachHangRepo.findById(id)
                 .map(kh -> {
-                    // Check if customer belongs to current user
-                    if (!kh.getUser().getId().equals(currentUser.getId())) {
+                    // Skip ownership check if user is admin
+                    if (!isAdmin && !kh.getUser().getId().equals(currentUser.getId())) {
                         ApiResponse<KhachHangResponse> response = new ApiResponse<>(403,
                                 "Bạn không có quyền xem thông tin khách hàng này", null);
                         return ResponseEntity.status(403).body(response);
@@ -110,10 +113,11 @@ public class KhachHangController {
     }
 
     @GetMapping("/user")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<List<KhachHangResponse>>> getMyCustomers() {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         List<KhachHang> khachHangs = khachHangRepo.findAllByUserId(currentUser.getId());
-    
+
         List<KhachHangResponse> responses = khachHangs.stream()
                 .map(kh -> {
                     KhachHangResponse res = new KhachHangResponse();
@@ -122,7 +126,7 @@ public class KhachHangController {
                     res.setEmail(kh.getEmail());
                     res.setSoDienThoai(kh.getSoDienThoai());
                     res.setDiaChi(kh.getDiaChi());
-    
+
                     // Map don hang
                     if (kh.getDonHangs() != null) {
                         List<DonHangResponse> donHangResponses = kh.getDonHangs().stream()
@@ -138,14 +142,14 @@ public class KhachHangController {
                     }
                     return res;
                 }).collect(Collectors.toList());
-    
+
         ApiResponse<List<KhachHangResponse>> response = new ApiResponse<>(200,
                 "Lấy danh sách khách hàng của bạn thành công", responses);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<KhachHang> create(@Valid @RequestBody KhachHangRequest req) {
 
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -162,7 +166,7 @@ public class KhachHangController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<KhachHang>> update(
             @PathVariable Long id,
             @Valid @RequestBody KhachHangRequest req) {
@@ -182,7 +186,10 @@ public class KhachHangController {
                     kh.setEmail(req.getEmail());
                     kh.setSoDienThoai(req.getSoDienThoai());
                     kh.setDiaChi(req.getDiaChi());
-
+                    // ẩn đi mật khẩu
+                    User copyUser = currentUser;
+                    copyUser.setPassword(null);
+                    kh.setUser(copyUser);
                     KhachHang updatedKh = khachHangRepo.save(kh);
                     ApiResponse<KhachHang> response = new ApiResponse<>(200,
                             "Cập nhật thông tin khách hàng thành công", updatedKh);
@@ -194,7 +201,7 @@ public class KhachHangController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 

@@ -5,6 +5,7 @@ import com.example.demojpa.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Optional;
 
 @Service
 public class CartService {
@@ -33,13 +34,16 @@ public class CartService {
         SanPham sanPham = sanPhamRepo.findById(sanPhamId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
 
-        CartItem existingItem = cartItemRepo.findByCartAndSanPham(cart, sanPham)
-                .orElse(null);
+        // Check if product already exists in cart
+        Optional<CartItem> existingItem = cartItemRepo.findByCartAndSanPham(cart, sanPham);
 
-        if (existingItem != null) {
-            existingItem.setSoLuong(existingItem.getSoLuong() + soLuong);
-            cartItemRepo.save(existingItem);
+        if (existingItem.isPresent()) {
+            // If product exists, update quantity
+            CartItem item = existingItem.get();
+            item.setSoLuong(item.getSoLuong() + soLuong);
+            cartItemRepo.save(item);
         } else {
+            // If product doesn't exist, create new cart item
             CartItem newItem = new CartItem();
             newItem.setCart(cart);
             newItem.setSanPham(sanPham);
@@ -71,9 +75,24 @@ public class CartService {
     }
 
     @Transactional
-    public void clearCart(User user) {
+    public Cart clearCart(User user) {
         Cart cart = getOrCreateCart(user);
         cart.getCartItems().clear();
-        cartRepo.save(cart);
+        return cartRepo.save(cart);
+    }
+
+    @Transactional
+    public Cart removeFromCart(User user, Long sanPhamId) {
+        Cart cart = getOrCreateCart(user);
+        SanPham sanPham = sanPhamRepo.findById(sanPhamId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+
+        CartItem item = cartItemRepo.findByCartAndSanPham(cart, sanPham)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không có trong giỏ hàng"));
+
+        cart.getCartItems().remove(item);
+        cartItemRepo.delete(item);
+
+        return cartRepo.save(cart);
     }
 }
