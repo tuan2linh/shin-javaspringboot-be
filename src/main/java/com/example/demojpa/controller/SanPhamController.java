@@ -14,9 +14,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,8 +33,8 @@ public class SanPhamController {
     private TheLoaiRepository theLoaiRepo;
 
     @GetMapping
-    public List<SanPhamResponse> getAll() {
-        return repo.findAll().stream().map(sp -> {
+    public ResponseEntity<ApiResponse<List<SanPhamResponse>>> getAll() {
+        List<SanPhamResponse> responses = repo.findAll().stream().map(sp -> {
             SanPhamResponse res = new SanPhamResponse();
             res.setId(sp.getId());
             res.setTen(sp.getTen());
@@ -45,13 +47,15 @@ public class SanPhamController {
             res.setTenTheLoais(tenTheLoais);
             return res;
         }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(new ApiResponse<>(
+                HttpStatus.OK.value(),
+                "Lấy danh sách sản phẩm thành công",
+                responses));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<SanPhamResponse>> getSanPhamById(@PathVariable Long id) {
-        // SanPham sp = repo.findById(id)
-        // .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm id:
-        // " + id));
         SanPhamResponse sp = repo.findById(id).map(sanPham -> {
             SanPhamResponse res = new SanPhamResponse();
             res.setId(sanPham.getId());
@@ -71,11 +75,12 @@ public class SanPhamController {
     }
 
     @GetMapping("/phantrang")
-    public PageResponse<SanPham> getSanPhamPhanTrang(
+    public ResponseEntity<ApiResponse<PageResponse<SanPhamResponse>>> getSanPhamPhanTrang(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
+
         Sort sort = sortDir.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
@@ -83,24 +88,43 @@ public class SanPhamController {
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<SanPham> pageSanPham = repo.findAll(pageable);
 
-        PageResponse<SanPham> res = new PageResponse<>();
-        res.setContent(pageSanPham.getContent());
-        res.setPageNumber(pageSanPham.getNumber());
-        res.setPageSize(pageSanPham.getSize());
-        res.setTotalElements(pageSanPham.getTotalElements());
-        res.setTotalPages(pageSanPham.getTotalPages());
-        res.setLast(pageSanPham.isLast());
+        List<SanPhamResponse> responses = pageSanPham.getContent().stream()
+                .map(sp -> {
+                    SanPhamResponse res = new SanPhamResponse();
+                    res.setId(sp.getId());
+                    res.setTen(sp.getTen());
+                    res.setGia(sp.getGia());
+                    res.setMota(sp.getMota());
+                    res.setHinhAnh(sp.getHinhAnh());
+                    List<String> tenTheLoais = sp.getTheLoais().stream()
+                            .map(TheLoai::getTen)
+                            .collect(Collectors.toList());
+                    res.setTenTheLoais(tenTheLoais);
+                    return res;
+                }).collect(Collectors.toList());
 
-        return res;
+        PageResponse<SanPhamResponse> pageResponse = new PageResponse<>();
+        pageResponse.setContent(responses);
+        pageResponse.setPageNumber(pageSanPham.getNumber());
+        pageResponse.setPageSize(pageSanPham.getSize());
+        pageResponse.setTotalElements(pageSanPham.getTotalElements());
+        pageResponse.setTotalPages(pageSanPham.getTotalPages());
+        pageResponse.setLast(pageSanPham.isLast());
+
+        return ResponseEntity.ok(new ApiResponse<>(
+                HttpStatus.OK.value(),
+                "Lấy danh sách sản phẩm phân trang thành công",
+                pageResponse));
     }
 
     @GetMapping("/search")
-    public PageResponse<SanPham> searchSanPham(
+    public ResponseEntity<ApiResponse<PageResponse<SanPhamResponse>>> searchSanPham(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
+
         Sort sort = sortDir.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
@@ -108,26 +132,53 @@ public class SanPhamController {
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<SanPham> pageSanPham = repo.findByTenContainingIgnoreCase(keyword, pageable);
 
-        PageResponse<SanPham> res = new PageResponse<>();
-        res.setContent(pageSanPham.getContent());
-        res.setPageNumber(pageSanPham.getNumber());
-        res.setPageSize(pageSanPham.getSize());
-        res.setTotalElements(pageSanPham.getTotalElements());
-        res.setTotalPages(pageSanPham.getTotalPages());
-        res.setLast(pageSanPham.isLast());
+        List<SanPhamResponse> responses = pageSanPham.getContent().stream()
+                .map(sp -> {
+                    SanPhamResponse res = new SanPhamResponse();
+                    res.setId(sp.getId());
+                    res.setTen(sp.getTen());
+                    res.setGia(sp.getGia());
+                    res.setMota(sp.getMota());
+                    res.setHinhAnh(sp.getHinhAnh());
+                    List<String> tenTheLoais = sp.getTheLoais().stream()
+                            .map(TheLoai::getTen)
+                            .collect(Collectors.toList());
+                    res.setTenTheLoais(tenTheLoais);
+                    return res;
+                }).collect(Collectors.toList());
 
-        return res;
+        PageResponse<SanPhamResponse> pageResponse = new PageResponse<>();
+        pageResponse.setContent(responses);
+        pageResponse.setPageNumber(pageSanPham.getNumber());
+        pageResponse.setPageSize(pageSanPham.getSize());
+        pageResponse.setTotalElements(pageSanPham.getTotalElements());
+        pageResponse.setTotalPages(pageSanPham.getTotalPages());
+        pageResponse.setLast(pageSanPham.isLast());
+
+        return ResponseEntity.ok(new ApiResponse<>(
+                HttpStatus.OK.value(),
+                "Tìm kiếm sản phẩm thành công",
+                pageResponse));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<SanPhamResponse>> create(@RequestBody SanPhamRequest req) {
+    public ResponseEntity<ApiResponse<SanPhamResponse>> create(@Valid @RequestBody SanPhamRequest req) {
+        // Kiểm tra tồn tại của các thể loại
+        List<TheLoai> theLoais = theLoaiRepo.findAllById(req.getTheLoaiIds());
+        if (theLoais.size() != req.getTheLoaiIds().size()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(
+                            HttpStatus.BAD_REQUEST.value(),
+                            "Một số thể loại không tồn tại",
+                            null));
+        }
+
         SanPham sp = new SanPham();
         sp.setTen(req.getTen());
         sp.setGia(req.getGia());
         sp.setMota(req.getMota());
         sp.setHinhAnh(req.getHinhAnh());
-        List<TheLoai> theLoais = theLoaiRepo.findAllById(req.getTheLoaiIds());
         sp.setTheLoais(theLoais);
 
         SanPham saved = repo.save(sp);
@@ -144,7 +195,10 @@ public class SanPhamController {
                 .collect(Collectors.toList());
         response.setTenTheLoais(tenTheLoais);
 
-        return ResponseEntity.ok(new ApiResponse<>(200, "Tạo sản phẩm thành công", response));
+        return ResponseEntity.ok(new ApiResponse<>(
+                HttpStatus.CREATED.value(),
+                "Tạo sản phẩm thành công",
+                response));
     }
 
     @PutMapping("/{id}")
@@ -180,7 +234,11 @@ public class SanPhamController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         repo.deleteById(id);
+        return ResponseEntity.ok(new ApiResponse<>(
+                HttpStatus.OK.value(),
+                "Xóa sản phẩm thành công",
+                null));
     }
 }

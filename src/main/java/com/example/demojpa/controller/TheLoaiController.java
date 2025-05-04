@@ -1,9 +1,11 @@
 package com.example.demojpa.controller;
 
+import com.example.demojpa.dto.ApiResponse;
 import com.example.demojpa.dto.TheLoaiResponse;
 import com.example.demojpa.entity.TheLoai;
 import com.example.demojpa.repository.TheLoaiRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,46 +19,50 @@ public class TheLoaiController {
     @Autowired
     private TheLoaiRepository theLoaiRepo;
 
-    // GET /theloai
     @GetMapping
-    public List<TheLoaiResponse> getAll() {
-        return theLoaiRepo.findAll().stream().map(tl -> {
+    public ApiResponse<List<TheLoaiResponse>> getAll() {
+        List<TheLoaiResponse> responses = theLoaiRepo.findAll().stream().map(tl -> {
             TheLoaiResponse res = new TheLoaiResponse();
             res.setId(tl.getId());
             res.setTen(tl.getTen());
             res.setSoLuongSanPham(
-                tl.getSanPhams() != null ? tl.getSanPhams().size() : 0
-            );
+                    tl.getSanPhams() != null ? tl.getSanPhams().size() : 0);
             return res;
         }).collect(Collectors.toList());
+        return new ApiResponse<>(HttpStatus.OK.value(), "Lấy danh sách thể loại thành công", responses);
     }
 
-    // GET /theloai/{id}
     @GetMapping("/{id}")
-    public TheLoai getById(@PathVariable Long id) {
-        return theLoaiRepo.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy thể loại"));
+    public ApiResponse<TheLoai> getById(@PathVariable Long id) {
+        TheLoai theLoai = theLoaiRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thể loại"));
+        return new ApiResponse<>(HttpStatus.OK.value(), "Lấy thể loại thành công", theLoai);
     }
 
-    // POST /theloai
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public TheLoai create(@RequestBody TheLoai theLoai) {
-        return theLoaiRepo.save(theLoai);
+    public ApiResponse<TheLoai> create(@RequestBody TheLoai theLoai) {
+        if (theLoaiRepo.existsByTen(theLoai.getTen())) {
+            return new ApiResponse<>(HttpStatus.BAD_REQUEST.value(),
+                    "Thể loại với tên này đã tồn tại", null);
+        }
+        TheLoai saved = theLoaiRepo.save(theLoai);
+        return new ApiResponse<>(HttpStatus.CREATED.value(), "Tạo thể loại thành công", saved);
     }
 
-    // PUT /theloai/{id}
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public TheLoai update(@PathVariable Long id, @RequestBody TheLoai data) {
+    public ApiResponse<TheLoai> update(@PathVariable Long id, @RequestBody TheLoai data) {
         TheLoai old = theLoaiRepo.findById(id).orElseThrow();
         old.setTen(data.getTen());
-        return theLoaiRepo.save(old);
+        TheLoai updated = theLoaiRepo.save(old);
+        return new ApiResponse<>(HttpStatus.OK.value(), "Cập nhật thể loại thành công", updated);
     }
 
-    // DELETE /theloai/{id}
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id) {
         theLoaiRepo.deleteById(id);
+        return new ApiResponse<>(HttpStatus.OK.value(), "Xóa thể loại thành công", null);
     }
 }
