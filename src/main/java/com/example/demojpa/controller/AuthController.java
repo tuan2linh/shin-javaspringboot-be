@@ -19,12 +19,16 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "01. Authentication", description = "Authentication management APIs")
 public class AuthController {
 
     @Autowired
@@ -45,6 +49,11 @@ public class AuthController {
     @Autowired
     private CartService cartService;
 
+    @Operation(
+        summary = "Register new user",
+        description = "API đăng ký tài khoản mới",
+        operationId = "1_register"
+    )
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@RequestBody AuthRequest request) {
         // Kiểm tra username đã tồn tại chưa
@@ -75,6 +84,11 @@ public class AuthController {
         return ResponseEntity.ok(new ApiResponse<>(200, "Đăng ký thành công", authResponse));
     }
 
+    @Operation(
+        summary = "Login user", 
+        description = "API đăng nhập",
+        operationId = "2_login"
+    )
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody AuthRequest request) {
         try {
@@ -99,6 +113,12 @@ public class AuthController {
         }
     }
 
+    @Operation(
+        summary = "Get user profile",
+        description = "API lấy thông tin người dùng",
+        operationId = "3_profile",
+        security = @SecurityRequirement(name = "bearerAuth")
+    )
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<User>> getProfile() {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -106,6 +126,11 @@ public class AuthController {
         return ResponseEntity.ok(new ApiResponse<>(200, "Lấy thông tin profile thành công", user));
     }
 
+    @Operation(
+        summary = "Refresh token",
+        description = "API làm mới token",
+        operationId = "4_refresh"
+    )
     @PostMapping("/refresh-token")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(@RequestBody RefreshTokenRequest request) {
         try {
@@ -128,6 +153,13 @@ public class AuthController {
         }
     }
 
+    @Operation(
+        summary = "Logout user",
+
+        operationId = "5_logout",
+        description = "API đăng xuất",
+        security = @SecurityRequirement(name = "bearerAuth")
+    )
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
         try {

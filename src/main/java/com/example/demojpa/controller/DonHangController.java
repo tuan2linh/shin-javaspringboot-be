@@ -10,6 +10,11 @@ import com.example.demojpa.entity.*;
 import com.example.demojpa.repository.*;
 import com.example.demojpa.service.CartService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +28,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/donhang")
+@Tag(name = "05. Đơn hàng", description = "Quản lý đơn hàng APIs - User muốn tạo đơn hàng cần gắn đơn hàng đó với các khách hàng thuộc về user đó")
 public class DonHangController {
 
     @Autowired
@@ -40,6 +46,7 @@ public class DonHangController {
     @Autowired
     private CartService cartService;
 
+    @Operation(summary = "Lấy tất cả đơn hàng", description = "API này trả về danh sách tất cả đơn hàng (Chỉ ADMIN)", security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<DonHangResponse>>> getAll() {
@@ -76,9 +83,11 @@ public class DonHangController {
                 responses));
     }
 
+    @Operation(summary = "Lấy đơn hàng theo ID", description = "API này trả về chi tiết một đơn hàng. ADMIN có thể xem tất cả, USER chỉ xem được đơn hàng của mình", security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
-    public ResponseEntity<ApiResponse<DonHangResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<DonHangResponse>> getById(
+            @Parameter(description = "ID của đơn hàng") @PathVariable Long id) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         boolean isAdmin = currentUser.getRole() == Role.ADMIN;
 
@@ -121,9 +130,11 @@ public class DonHangController {
                                 "Không tìm thấy đơn hàng với ID: " + id, null)));
     }
 
+    @Operation(summary = "Tạo đơn hàng mới", description = "API này tạo một đơn hàng mới từ danh sách sản phẩm (Chỉ USER)", security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<ApiResponse<DonHangResponse>> taoDonHang(@RequestBody DonHangRequest request) {
+    public ResponseEntity<ApiResponse<DonHangResponse>> taoDonHang(
+            @Parameter(description = "Thông tin đơn hàng") @RequestBody DonHangRequest request) {
         try {
             // Validate request
             if (request.getChiTietDonHang() == null || request.getChiTietDonHang().isEmpty()) {
@@ -202,9 +213,11 @@ public class DonHangController {
         }
     }
 
+    @Operation(summary = "Tạo đơn hàng từ giỏ hàng", description = "API này tạo đơn hàng từ giỏ hàng hiện tại của user (Chỉ USER)", security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/cart")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<ApiResponse<DonHangResponse>> createFromCart(@RequestParam Long khachHangId) {
+    public ResponseEntity<ApiResponse<DonHangResponse>> createFromCart(
+            @Parameter(description = "ID của khách hàng") @RequestParam Long khachHangId) {
         try {
             User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
@@ -281,11 +294,12 @@ public class DonHangController {
         }
     }
 
+    @Operation(summary = "Cập nhật đơn hàng", description = "API này cập nhật thông tin đơn hàng. ADMIN có thể cập nhật tất cả thông tin, USER chỉ có thể ẩn/hiện đơn hàng của mình", security = @SecurityRequirement(name = "bearerAuth"))
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     public ResponseEntity<ApiResponse<DonHangResponse>> updateDonHang(
-            @PathVariable Long id,
-            @RequestBody DonHangUpdateRequest request) {
+            @Parameter(description = "ID của đơn hàng") @PathVariable Long id,
+            @Parameter(description = "Thông tin cập nhật") @RequestBody DonHangUpdateRequest request) {
 
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         boolean isAdmin = currentUser.getRole() == Role.ADMIN;
@@ -342,9 +356,11 @@ public class DonHangController {
         return ResponseEntity.ok(new ApiResponse<>(200, "Cập nhật đơn hàng thành công", res));
     }
 
+    @Operation(summary = "Xóa đơn hàng", description = "API này xóa một đơn hàng khỏi hệ thống (Chỉ ADMIN)", security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteDonHang(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteDonHang(
+            @Parameter(description = "ID của đơn hàng") @PathVariable Long id) {
         DonHang donHang = donHangRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
 

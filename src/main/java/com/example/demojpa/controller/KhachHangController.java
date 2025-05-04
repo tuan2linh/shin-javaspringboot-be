@@ -22,8 +22,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 @RestController
 @RequestMapping("/khachhang")
+@Tag(name = "06. Khách hàng", description = "Quản lý khách hàng APIs - Mỗi user có thể có nhiều khách hàng")
 public class KhachHangController {
 
     @Autowired
@@ -32,6 +38,7 @@ public class KhachHangController {
     @Autowired
     private UserRepository userRepo;
 
+    @Operation(summary = "Lấy tất cả khách hàng", description = "API này trả về danh sách tất cả khách hàng (Chỉ ADMIN)", security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<KhachHangResponse>>> getAll() {
@@ -66,9 +73,11 @@ public class KhachHangController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Lấy khách hàng theo ID", description = "API này trả về thông tin chi tiết của một khách hàng. ADMIN có thể xem tất cả, USER chỉ có thể xem khách hàng của mình", security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
-    public ResponseEntity<ApiResponse<KhachHangResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<KhachHangResponse>> getById(
+            @Parameter(description = "ID của khách hàng") @PathVariable Long id) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         boolean isAdmin = currentUser.getRole() == Role.ADMIN;
 
@@ -112,6 +121,7 @@ public class KhachHangController {
                                 "Không tìm thấy khách hàng với ID: " + id, null)));
     }
 
+    @Operation(summary = "Lấy danh sách khách hàng của user hiện tại", description = "API này trả về danh sách khách hàng của user đang đăng nhập (Chỉ USER)", security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/user")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<List<KhachHangResponse>>> getMyCustomers() {
@@ -148,9 +158,11 @@ public class KhachHangController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Tạo khách hàng mới", description = "API này tạo một khách hàng mới và gán cho user hiện tại (Chỉ USER)", security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<KhachHang> create(@Valid @RequestBody KhachHangRequest req) {
+    public ResponseEntity<KhachHang> create(
+            @Parameter(description = "Thông tin khách hàng") @Valid @RequestBody KhachHangRequest req) {
 
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         User copyUser = currentUser;
@@ -165,11 +177,12 @@ public class KhachHangController {
         return ResponseEntity.ok(khachHangRepo.save(kh));
     }
 
+    @Operation(summary = "Cập nhật thông tin khách hàng", description = "API này cập nhật thông tin của một khách hàng. USER chỉ có thể cập nhật khách hàng của mình", security = @SecurityRequirement(name = "bearerAuth"))
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<KhachHang>> update(
-            @PathVariable Long id,
-            @Valid @RequestBody KhachHangRequest req) {
+            @Parameter(description = "ID của khách hàng") @PathVariable Long id,
+            @Parameter(description = "Thông tin cập nhật") @Valid @RequestBody KhachHangRequest req) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         return khachHangRepo.findById(id)
@@ -200,9 +213,11 @@ public class KhachHangController {
                                 "Không tìm thấy khách hàng với ID: " + id, null)));
     }
 
+    @Operation(summary = "Xóa khách hàng", description = "API này xóa một khách hàng. USER chỉ có thể xóa khách hàng của mình", security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(
+            @Parameter(description = "ID của khách hàng") @PathVariable Long id) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         return khachHangRepo.findById(id)

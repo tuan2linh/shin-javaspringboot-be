@@ -13,23 +13,34 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 @RestController
 @RequestMapping("/upload")
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "07. Upload", description = "Upload file APIs - Chỉ ADMIN mới có quyền upload")
 public class UploadController {
 
     private static final String UPLOAD_DIR = "uploads";
+
     @Value("${app.base-url}")
     private String baseUrl;
-    
+
     @Value("${server.port}")
     private String serverPort;
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<String>> uploadFile(@RequestParam("file") MultipartFile file) {
+    @Operation(summary = "Upload file", description = "API này cho phép upload file lên server (Chỉ ADMIN)", security = @SecurityRequirement(name = "bearerAuth"))
+    @PostMapping(consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<String>> uploadFile(
+            @Parameter(description = "File cần upload", content = @Content(mediaType = "multipart/form-data")) @RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest()
-                .body(new ApiResponse<>(400, "Vui lòng chọn file để upload!", null));
+                    .body(new ApiResponse<>(400, "Vui lòng chọn file để upload!", null));
         }
 
         try {
@@ -49,7 +60,7 @@ public class UploadController {
         } catch (IOException e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(500, "Lỗi upload file!", null));
+                    .body(new ApiResponse<>(500, "Lỗi upload file!", null));
         }
     }
 }
