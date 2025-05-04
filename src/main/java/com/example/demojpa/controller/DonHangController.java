@@ -3,10 +3,13 @@ package com.example.demojpa.controller;
 import com.example.demojpa.dto.ApiResponse;
 import com.example.demojpa.dto.DonHangRequest;
 import com.example.demojpa.dto.DonHangResponse;
+import com.example.demojpa.dto.DonHangUpdateRequest;
 import com.example.demojpa.dto.ChiTietDonHangRequest;
 import com.example.demojpa.dto.ChiTietDonHangResponse;
 import com.example.demojpa.entity.*;
 import com.example.demojpa.repository.*;
+import com.example.demojpa.service.CartService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,6 +36,9 @@ public class DonHangController {
 
     @Autowired
     private ChiTietDonHangRepository chiTietRepo;
+
+    @Autowired
+    private CartService cartService;
 
     @PostMapping
     @PreAuthorize("hasRole('USER')")
@@ -86,6 +92,64 @@ public class DonHangController {
         return ResponseEntity.ok(new ApiResponse<>(200, "Tạo đơn hàng thành công", res));
     }
 
+    @PostMapping("/cart")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<DonHangResponse>> createFromCart(@RequestParam Long khachHangId) {
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        // Find customer
+        KhachHang khachHang = khachHangRepo.findById(khachHangId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khách hàng"));
+
+        // Verify customer belongs to current user
+        if (!khachHang.getUser().getId().equals(currentUser.getId())) {
+            return ResponseEntity.status(403)
+                    .body(new ApiResponse<>(403, "Bạn không có quyền tạo đơn hàng cho khách hàng này", null));
+        }
+
+        // Get cart
+        Cart cart = cartService.getOrCreateCart(currentUser);
+        if (cart.getCartItems().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(400, "Giỏ hàng trống", null));
+        }
+
+        // Create order
+        DonHang donHang = new DonHang();
+        donHang.setNgayDat(LocalDate.now());
+        donHang.setKhachHang(khachHang);
+        donHang.setChiTietDonHangList(new ArrayList<>());
+
+        double tongTien = 0;
+
+        // Convert cart items to order details
+        for (CartItem cartItem : cart.getCartItems()) {
+            ChiTietDonHang chiTiet = new ChiTietDonHang();
+            chiTiet.setDonHang(donHang);
+            chiTiet.setSanPham(cartItem.getSanPham());
+            chiTiet.setSoLuong(cartItem.getSoLuong());
+            chiTiet.setDonGia(cartItem.getSanPham().getGia());
+
+            tongTien += chiTiet.getDonGia() * cartItem.getSoLuong();
+            donHang.getChiTietDonHangList().add(chiTiet);
+        }
+
+        donHang.setTongTien(tongTien);
+        DonHang saved = donHangRepo.save(donHang);
+
+        // Clear cart after creating order
+        cartService.clearCart(currentUser);
+
+        // Create response
+        DonHangResponse res = new DonHangResponse();
+        res.setId(saved.getId());
+        res.setNgayDat(saved.getNgayDat());
+        res.setTongTien(saved.getTongTien());
+        res.setTenKhach(khachHang.getHoTen());
+
+        return ResponseEntity.ok(new ApiResponse<>(200, "Tạo đơn hàng thành công", res));
+    }
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public List<DonHangResponse> getAll() {
@@ -97,6 +161,79 @@ public class DonHangController {
             res.setTenKhach(dh.getKhachHang().getHoTen());
             return res;
         }).collect(Collectors.toList());
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public ResponseEntity<ApiResponse<DonHangResponse>> updateDonHang(
+            @PathVariable Long id,
+            @RequestBody DonHangUpdateRequest request) {
+
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+        DonHang donHang = donHangRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+
+        // Kiểm tra quyền
+        if (!isAdmin && !donHang.getKhachHang().getUser().getId().equals(currentUser.getId())) {
+            return ResponseEntity.status(403)
+                    .body(new ApiResponse<>(403, "Bạn không có quyền cập nhật đơn hàng này", null));
+        }
+
+        // Chỉ ADMIN mới được thay đổi trạng thái
+        if (request.getTrangThai() != null) {
+            if (!isAdmin) {
+                return ResponseEntity.status(403)
+                        .body(new ApiResponse<>(403, "Chỉ admin mới được thay đổi trạng thái đơn hàng", null));
+            }
+            donHang.setTrangThai(request.getTrangThai());
+        }
+
+        // Cập nhật isHidden
+        if (request.getIsHidden() != null) {
+            donHang.setHidden(request.getIsHidden());
+        }
+
+        donHang = donHangRepo.save(donHang);
+
+        // Tạo response
+        DonHangResponse res = new DonHangResponse();
+        res.setId(donHang.getId());
+        res.setNgayDat(donHang.getNgayDat());
+        res.setTongTien(donHang.getTongTien());
+        res.setTenKhach(donHang.getKhachHang().getHoTen());
+        res.setTrangThai(donHang.getTrangThai());
+        res.setHidden(donHang.isHidden());
+
+        // Map chi tiết đơn hàng
+        List<ChiTietDonHangResponse> chiTietList = donHang.getChiTietDonHangList()
+                .stream()
+                .map(ct -> {
+                    ChiTietDonHangResponse ctRes = new ChiTietDonHangResponse();
+                    ctRes.setId(ct.getId());
+                    ctRes.setTenSanPham(ct.getSanPham().getTen());
+                    ctRes.setDonGia(ct.getDonGia());
+                    ctRes.setSoLuong(ct.getSoLuong());
+                    ctRes.setThanhTien(ct.getDonGia() * ct.getSoLuong());
+                    return ctRes;
+                })
+                .collect(Collectors.toList());
+        res.setChiTietDonHang(chiTietList);
+
+        return ResponseEntity.ok(new ApiResponse<>(200, "Cập nhật đơn hàng thành công", res));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteDonHang(@PathVariable Long id) {
+        DonHang donHang = donHangRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+
+        // Xóa đơn hàng khỏi database
+        donHangRepo.delete(donHang);
+
+        return ResponseEntity.ok(new ApiResponse<>(200, "Xóa đơn hàng thành công", null));
     }
 
     @GetMapping("/{id}")

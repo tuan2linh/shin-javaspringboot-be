@@ -27,6 +27,11 @@ public class DonHang {
     @JsonBackReference // tránh vòng lặp vô hạn khi serialize
     private KhachHang khachHang;
 
-    @OneToMany(mappedBy = "donHang", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "donHang", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChiTietDonHang> chiTietDonHangList = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    private TrangThaiDonHang trangThai = TrangThaiDonHang.PENDING;
+
+    private boolean isHidden = false;
 }
